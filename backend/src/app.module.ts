@@ -27,8 +27,7 @@ import { FriendshipModule } from './friendship/friendship.module';
 import { MentionsModule } from './mentions/mentions.module';
 import { SplitCommentsModule } from './split-comments/split-comments.module';
 import { AnalyticsModule } from "./analytics/analytics.module";
-import { ExportModule } from './export/export.module';
-import { WebhooksModule } from "./webhooks/webhooks.module";
+import { DisputeModule } from './dispute/dispute.module';
 // Load environment variables
 dotenv.config({
   path: path.resolve(__dirname, '../.env'),
@@ -94,9 +93,7 @@ dotenv.config({
     SplitCommentsModule,
     // Analytics module for user spending & reports
     AnalyticsModule,
-    ExportModule,
-    // Webhooks module for external event notifications
-    WebhooksModule,
+    DisputeModule,
   ],
 })
 export class AppModule {}
