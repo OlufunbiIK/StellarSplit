@@ -69,4 +69,6 @@ export class SplitHistoryService {
       mostFrequentPartners: frequentPartners,
     };
   }
+
+
 }
