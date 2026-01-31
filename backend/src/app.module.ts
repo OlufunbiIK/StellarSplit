@@ -19,6 +19,7 @@ import { SplitHistoryModule } from "./split-history/split-history.module";
 import { ActivitiesModule } from "./modules/activities/activities.module";
 import { SearchModule } from "./search/search.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
+import { DisputeModule } from './dispute/dispute.module';
 // Load environment variables
 dotenv.config({
   path: path.resolve(__dirname, "../.env"),
@@ -71,6 +72,7 @@ dotenv.config({
     SearchModule,
     // Analytics module for user spending & reports
     AnalyticsModule,
+    DisputeModule,
   ],
 })
 export class AppModule {}
