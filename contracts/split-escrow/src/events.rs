@@ -307,3 +307,13 @@ pub fn emit_bridge_refunded(env: &Env, bridge_id: &String, sender: &Address) {
             (bridge_id.clone(), sender.clone())
         );
 }
+
+/// Emit when a note is created or updated on an escrow
+///
+/// Issue #204: Emitted when a note is set during escrow creation or updated via set_note.
+pub fn emit_note_updated(env: &Env, split_id: &String, note: &String) {
+    env.events().publish(
+        (symbol_short!("note_upd"),),
+        (split_id.clone(), note.clone(), env.ledger().timestamp()),
+    );
+}
