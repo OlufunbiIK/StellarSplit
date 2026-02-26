@@ -456,6 +456,8 @@ pub struct EscrowParticipant {
 /// deadline enforcement and detailed participant tracking.
 #[contracttype]
 #[derive(Clone, Debug)]
+#[contracttype]
+#[derive(Clone, Debug)]
 pub struct SplitEscrow {
     /// Unique split identifier (string format for flexibility)
     pub split_id: String,
@@ -486,7 +488,11 @@ pub struct SplitEscrow {
 
     /// Unix timestamp when the escrow was created
     pub created_at: u64,
+
+    /// Optional note/comment attached to the escrow (max 128 bytes)
+    pub note: String,
 }
+
 
 // ============================================
 // Validation Helpers

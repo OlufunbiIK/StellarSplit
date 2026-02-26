@@ -11,5 +11,7 @@ pub enum Error {
     InvalidAmount = 6,
     AlreadyPaid = 7,
     Unauthorized = 8,
-    ParticipantNotFound = 9
+    ParticipantNotFound = 9,
+    InvalidInput = 36,
+    InvalidEscrowStatus = 38,
 }

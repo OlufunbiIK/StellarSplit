@@ -6,13 +6,15 @@ use soroban_sdk::{
 mod storage;
 mod types;
 mod events;
+mod errors;
 
 #[cfg(test)]
 mod test;
 
 use crate::types::{
-    SplitEscrow, EscrowParticipant, EscrowStatus, Error,
+    SplitEscrow, EscrowParticipant, EscrowStatus,
 };
+use crate::errors::Error;
 
 #[contract]
 pub struct SplitEscrowContract;
@@ -59,6 +61,7 @@ impl SplitEscrowContract {
     ///
     /// Extended in issue #201: each participant now specifies the token they will pay with.
     /// All assets must be on the approved-asset allowlist or the call is rejected.
+    /// Extended in issue #204: accepts optional note parameter (max 128 bytes).
     pub fn create_split(
         env: Env,
         creator: Address,
@@ -67,6 +70,8 @@ impl SplitEscrowContract {
         participant_addresses: Vec<Address>,
         participant_shares: Vec<i128>,
         participant_assets: Vec<Address>,
+        deadline: u64,
+        note: Option<String>,
     ) -> u64 {
         // Verify the creator is authorizing this call
         creator.require_auth();
@@ -74,6 +79,15 @@ impl SplitEscrowContract {
         if storage::is_paused(&env) {
             panic!("Contract is paused");
         }
+
+        // Validate note length if provided
+        let note_value = match note {
+            Some(n) => {
+                Self::validate_note_length(&n).expect("Note exceeds 128 bytes");
+                n
+            },
+            None => String::from_str(&env, ""),
+        };
 
         if participant_addresses.len() != participant_shares.len() {
             panic!("Participant addresses and shares must have the same length");
@@ -117,8 +131,10 @@ impl SplitEscrowContract {
             participants.push_back(participant);
         }
 
+        let split_id_str = String::from_str(&env, &split_id.to_string());
+
         let escrow = SplitEscrow {
-            split_id: split_id.clone(),
+            split_id: split_id_str.clone(),
             creator: creator.clone(),
             requester: creator.clone(),
             description: description.clone(),
@@ -126,13 +142,19 @@ impl SplitEscrowContract {
             amount_collected: 0,
             participants,
             status: EscrowStatus::Active,
-            deadline: deadline,
+            deadline,
             created_at: env.ledger().timestamp(),
+            note: note_value.clone(),
         };
 
-        storage::set_escrow(&env, &split_id, &escrow);
+        storage::set_escrow(&env, &split_id_str, &escrow);
 
-        events::emit_split_created(&env, split_id_num, &creator, total_amount);
+        events::emit_split_created(&env, split_id, &creator, total_amount);
+
+        // Emit NoteUpdated event if note is non-empty
+        if note_value.len() > 0 {
+            events::emit_note_updated(&env, &split_id_str, &note_value);
+        }
 
         split_id
     }
@@ -270,6 +292,53 @@ impl SplitEscrowContract {
     /// Get the token contract address
     pub fn get_token(env: Env) -> Address {
         storage::get_token(&env)
+    }
+
+    // ============================================
+    // Note Management Functions (Issue #204)
+    // ============================================
+
+    /// Set or update the note on an escrow
+    ///
+    /// Only the creator can update the note, and only while the escrow is Active.
+    pub fn set_note(env: Env, split_id: String, note: String) -> Result<(), Error> {
+        if storage::is_paused(&env) {
+            panic!("Contract is paused");
+        }
+
+        // Validate note length
+        Self::validate_note_length(&note)?;
+
+        // Get escrow
+        let mut escrow = storage::get_escrow(&env, &split_id)
+            .ok_or(Error::EscrowNotFound)?;
+
+        // Verify caller is the creator
+        escrow.creator.require_auth();
+
+        // Check escrow status is Active
+        if escrow.status != EscrowStatus::Active {
+            return Err(Error::InvalidEscrowStatus);
+        }
+
+        // Update note
+        escrow.note = note.clone();
+        storage::set_escrow(&env, &split_id, &escrow);
+
+        // Emit NoteUpdated event
+        events::emit_note_updated(&env, &split_id, &note);
+
+        Ok(())
+    }
+
+    /// Get the note attached to an escrow
+    ///
+    /// Public read access - no authentication required.
+    pub fn get_note(env: Env, split_id: String) -> Result<String, Error> {
+        let escrow = storage::get_escrow(&env, &split_id)
+            .ok_or(Error::EscrowNotFound)?;
+        
+        Ok(escrow.note)
     }
 
     // ============================================
@@ -721,6 +790,14 @@ impl SplitEscrowContract {
 
         let current = storage::is_paused(&env);
         storage::set_paused(&env, !current);
+    }
+
+    /// Validate note length (max 128 bytes)
+    fn validate_note_length(note: &String) -> Result<(), Error> {
+        if note.len() > 128 {
+            return Err(Error::InvalidInput);
+        }
+        Ok(())
     }
 
     /// Internal helper function to release funds
