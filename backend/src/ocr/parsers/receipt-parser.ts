@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 
 export interface ReceiptItem {
   name: string;
@@ -24,10 +24,10 @@ export class ReceiptParser {
    */
   parseReceiptText(ocrText: string, ocrConfidence: number): ParsedReceipt {
     const lines = this.preprocessText(ocrText);
-    
+
     const items = this.extractItems(lines);
     const totals = this.extractTotals(lines);
-    
+
     // Calculate confidence based on OCR confidence and parsing success
     const confidence = this.calculateConfidence(ocrConfidence, items, totals);
 
@@ -46,10 +46,10 @@ export class ReceiptParser {
    */
   private preprocessText(text: string): string[] {
     return text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => this.normalizeLine(line));
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => this.normalizeLine(line));
   }
 
   /**
@@ -57,13 +57,13 @@ export class ReceiptParser {
    */
   private normalizeLine(line: string): string {
     return line
-      .replace(/\s+/g, ' ')
-      .replace(/[|]/g, 'I') // Common OCR error
+      .replace(/\s+/g, " ")
+      .replace(/[|]/g, "I") // Common OCR error
       .replace(/[0O]/g, (match, offset) => {
         // Context-aware: if surrounded by digits, likely 0, else O
         const before = line[offset - 1];
         const after = line[offset + 1];
-        if (/\d/.test(before) || /\d/.test(after)) return '0';
+        if (/\d/.test(before) || /\d/.test(after)) return "0";
         return match;
       })
       .trim();
@@ -101,14 +101,16 @@ export class ReceiptParser {
       // Extract item name (everything before the price, minus quantity)
       let itemName = line.substring(0, priceMatch.index).trim();
       if (qtyMatch) {
-        itemName = itemName.replace(quantityPattern, '').trim();
+        itemName = itemName.replace(quantityPattern, "").trim();
       }
 
       // Clean item name
       itemName = this.cleanItemName(itemName);
 
       if (itemName.length > 0) {
-        items.push({ name: itemName, quantity, price });
+        const unitPrice =
+          quantity > 1 ? parseFloat((price / quantity).toFixed(2)) : price;
+        items.push({ name: itemName, quantity, price: unitPrice });
       }
     }
 
@@ -141,13 +143,17 @@ export class ReceiptParser {
       if (price <= 0) continue;
 
       // Match common total patterns
-      if (this.matchesPattern(upperLine, ['TOTAL', 'AMOUNT DUE', 'AMOUNT'])) {
+      if (this.matchesPattern(upperLine, ["TOTAL", "AMOUNT DUE", "AMOUNT"])) {
         totals.total = price;
-      } else if (this.matchesPattern(upperLine, ['SUBTOTAL', 'SUB-TOTAL', 'SUB TOTAL'])) {
+      } else if (
+        this.matchesPattern(upperLine, ["SUBTOTAL", "SUB-TOTAL", "SUB TOTAL"])
+      ) {
         totals.subtotal = price;
-      } else if (this.matchesPattern(upperLine, ['TAX', 'SALES TAX', 'GST', 'HST'])) {
+      } else if (
+        this.matchesPattern(upperLine, ["TAX", "SALES TAX", "GST", "HST"])
+      ) {
         totals.tax = price;
-      } else if (this.matchesPattern(upperLine, ['TIP', 'GRATUITY'])) {
+      } else if (this.matchesPattern(upperLine, ["TIP", "GRATUITY"])) {
         totals.tip = price;
       }
     }
@@ -172,7 +178,7 @@ export class ReceiptParser {
       /^[A-Z\s&]+$/, // All caps (likely store name)
     ];
 
-    return headerPatterns.some(pattern => pattern.test(upperLine));
+    return headerPatterns.some((pattern) => pattern.test(upperLine));
   }
 
   /**
@@ -180,15 +186,9 @@ export class ReceiptParser {
    */
   private isTotalLine(line: string): boolean {
     const upperLine = line.toUpperCase();
-    const totalPatterns = [
-      /TOTAL/,
-      /SUBTOTAL/,
-      /TAX/,
-      /TIP/,
-      /AMOUNT/,
-    ];
+    const totalPatterns = [/TOTAL/, /SUBTOTAL/, /TAX/, /TIP/, /AMOUNT/];
 
-    return totalPatterns.some(pattern => pattern.test(upperLine));
+    return totalPatterns.some((pattern) => pattern.test(upperLine));
   }
 
   /**
@@ -204,7 +204,7 @@ export class ReceiptParser {
    * Parse price string to number
    */
   private parsePrice(priceStr: string): number {
-    const cleaned = priceStr.replace(/[^0-9.]/g, '');
+    const cleaned = priceStr.replace(/[^0-9.]/g, "");
     const price = parseFloat(cleaned);
     return isNaN(price) ? 0 : price;
   }
@@ -214,9 +214,9 @@ export class ReceiptParser {
    */
   private cleanItemName(name: string): string {
     return name
-      .replace(/^\d+\s*[xX]\s*/, '') // Remove leading quantity
-      .replace(/\$?\d+\.\d{2}.*$/, '') // Remove trailing price
-      .replace(/[^\w\s\-&]/g, '') // Remove special chars except common ones
+      .replace(/^\d+\s*[xX]\s*/, "") // Remove leading quantity
+      .replace(/\$?\d+\.\d{2}.*$/, "") // Remove trailing price
+      .replace(/[^\w\s\-&]/g, "") // Remove special chars except common ones
       .trim();
   }
 
@@ -224,7 +224,7 @@ export class ReceiptParser {
    * Check if line matches any of the patterns
    */
   private matchesPattern(line: string, patterns: string[]): boolean {
-    return patterns.some(pattern => line.includes(pattern));
+    return patterns.some((pattern) => line.includes(pattern));
   }
 
   /**
