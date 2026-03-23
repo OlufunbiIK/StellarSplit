@@ -39,6 +39,7 @@ describe("DisputesService", () => {
   let splitRepository: any;
   let dataSource: any;
   let eventEmitter: any;
+  let queryRunner: typeof mockQueryRunner;
 
   const mockDispute: Dispute = {
     id: "dispute-123",
@@ -81,6 +82,20 @@ describe("DisputesService", () => {
   };
 
   beforeEach(async () => {
+    queryRunner = {
+      connect: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+      manager: {
+        findOne: jest.fn(),
+        create: jest.fn(),
+        save: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DisputesService,
@@ -113,20 +128,7 @@ describe("DisputesService", () => {
         {
           provide: DataSource,
           useValue: {
-            createQueryRunner: jest.fn(() => ({
-              connect: jest.fn(),
-              startTransaction: jest.fn(),
-              commitTransaction: jest.fn(),
-              rollbackTransaction: jest.fn(),
-              createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
-              release: jest.fn(),
-              manager: {
-                findOne: jest.fn(),
-                create: jest.fn(),
-                save: jest.fn(),
-                update: jest.fn(),
-              },
-            })),
+            createQueryRunner: jest.fn(() => queryRunner),
           },
         },
         {
@@ -163,7 +165,6 @@ describe("DisputesService", () => {
         description: "Amount does not match receipt",
       };
 
-      const queryRunner = dataSource.createQueryRunner();
       queryRunner.manager.findOne.mockResolvedValueOnce(mockSplit);
       queryRunner.manager.findOne.mockResolvedValueOnce(null); // No existing active dispute
       queryRunner.manager.create.mockReturnValue(mockDispute);
@@ -196,7 +197,6 @@ describe("DisputesService", () => {
         description: "Amount does not match receipt",
       };
 
-      const queryRunner = dataSource.createQueryRunner();
       queryRunner.manager.findOne.mockResolvedValueOnce(null);
 
       await expect(
@@ -211,7 +211,6 @@ describe("DisputesService", () => {
         description: "Amount does not match receipt",
       };
 
-      const queryRunner = dataSource.createQueryRunner();
       queryRunner.manager.findOne.mockResolvedValueOnce(mockSplit);
       queryRunner.manager.findOne.mockResolvedValueOnce(mockDispute); // Existing active dispute
 
@@ -294,7 +293,6 @@ describe("DisputesService", () => {
         details: { adjustment: 50 },
       };
 
-      const queryRunner = dataSource.createQueryRunner();
       const underReviewDispute = {
         ...mockDispute,
         status: DisputeStatus.UNDER_REVIEW,
@@ -340,7 +338,6 @@ describe("DisputesService", () => {
         details: {},
       };
 
-      const queryRunner = dataSource.createQueryRunner();
       queryRunner.manager.findOne.mockResolvedValueOnce(mockDispute); // OPEN status
 
       // OPEN -> RESOLVED is invalid
@@ -363,7 +360,6 @@ describe("DisputesService", () => {
         resolvedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
       };
 
-      const queryRunner = dataSource.createQueryRunner();
       queryRunner.manager.findOne.mockResolvedValueOnce(resolvedDispute);
       queryRunner.manager.save.mockResolvedValueOnce({
         ...resolvedDispute,
@@ -392,7 +388,6 @@ describe("DisputesService", () => {
         resolvedAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000), // 40 days ago
       };
 
-      const queryRunner = dataSource.createQueryRunner();
       queryRunner.manager.findOne.mockResolvedValueOnce(resolvedDispute);
 
       await expect(
@@ -413,7 +408,6 @@ describe("DisputesService", () => {
         resolvedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
       };
 
-      const queryRunner = dataSource.createQueryRunner();
       queryRunner.manager.findOne.mockResolvedValueOnce(resolvedDispute);
 
       await expect(
