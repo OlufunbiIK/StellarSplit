@@ -34,15 +34,15 @@ pub fn calculate_fee(total: i128, fee_bps: u32) -> i128 {
 
 pub fn collect_fee(env: &Env, total: i128) -> Result<i128, Error> {
     let fee_bps = storage::get_fee_bps(env);
-    let treasury = storage::get_treasury(env).ok_or(Error::TreasuryNotSet)?;
     let fee_amount = calculate_fee(total, fee_bps);
 
     if fee_amount > 0 {
+        let treasury = storage::get_treasury(env).ok_or(Error::TreasuryNotSet)?;
         let token = storage::get_token(env);
         let token_client = token::Client::new(env, &token);
         token_client.transfer(&env.current_contract_address(), &treasury, &fee_amount);
+        events::emit_fees_collected(env, fee_amount, &treasury);
     }
 
-    events::emit_fees_collected(env, fee_amount, &treasury);
     Ok(fee_amount)
 }

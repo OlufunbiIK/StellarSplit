@@ -145,12 +145,38 @@ fn test_upgrade_version_invalid_format() {
 }
 
 #[test]
-#[should_panic] // Should fail due to require_auth failure for non-admin
-fn test_upgrade_version_non_admin() {
-    let (env, client, _, _, _, _, _) = setup();
-    let non_admin = Address::generate(&env);
+fn test_release_funds_works_without_treasury_when_fee_is_zero() {
+    let (env, client, _admin, creator, participant, token_client, _) = setup();
     
-    env.as_contract(&client.address, || {
+    // Fee is 0% by default after init. Treasury is NOT set.
+    let split_id = client.create_split(&creator, &String::from_str(&env, "No Fee"), &1_000);
+    client.deposit(&split_id, &participant, &1_000);
+    
+    // This should NOT panic now, even without treasury set.
+    client.release_funds(&split_id);
+    
+    assert_eq!(token_client.balance(&creator), 1_000);
+    let split = client.get_split(&split_id);
+    assert_eq!(split.status, SplitStatus::Released);
+}
+
+#[test]
+#[should_panic]
+fn test_upgrade_version_non_admin() {
+    let env = Env::default();
+    // We don't call mock_all_auths() here.
+    
+    let admin = Address::generate(&env);
+    let token = Address::generate(&env);
+    let contract_id = env.register_contract(None, SplitEscrowContract);
+    let client = SplitEscrowContractClient::new(&env, &contract_id);
+    client.initialize(&admin, &token, &String::from_str(&env, "1.0.0"));
+    
+    let non_admin = Address::generate(&env);
+    // This should panic because non_admin is not the stored admin and we didn't mock auth.
+    // However, since Soroban verification requires the caller to be authorized,
+    // calling this as non_admin without mocking admin's auth will fail.
+    env.as_contract(&non_admin, || {
         client.upgrade_version(&String::from_str(&env, "2.0.0"));
     });
 }
