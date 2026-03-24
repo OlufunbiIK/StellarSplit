@@ -11,6 +11,7 @@ pub enum DataKey {
     Split(u64),
     FeeBps,
     Treasury,
+    Version,
 }
 
 pub fn has_admin(env: &Env) -> bool {
@@ -74,4 +75,12 @@ pub fn set_treasury(env: &Env, treasury: &Address) {
 
 pub fn get_treasury(env: &Env) -> Option<Address> {
     env.storage().instance().get(&DataKey::Treasury)
+}
+
+pub fn set_version(env: &Env, version: &soroban_sdk::String) {
+    env.storage().instance().set(&DataKey::Version, version);
+}
+
+pub fn get_version(env: &Env) -> soroban_sdk::String {
+    env.storage().instance().get(&DataKey::Version).unwrap()
 }

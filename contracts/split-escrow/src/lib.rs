@@ -17,14 +17,23 @@ pub struct SplitEscrowContract;
 
 #[contractimpl]
 impl SplitEscrowContract {
-    pub fn initialize(env: Env, admin: Address, token_address: Address) -> Result<(), Error> {
+    pub fn initialize(
+        env: Env,
+        admin: Address,
+        token_address: Address,
+        version: String,
+    ) -> Result<(), Error> {
         if storage::has_admin(&env) {
             return Err(Error::AlreadyInitialized);
+        }
+        if !is_valid_semver(&version) {
+            return Err(Error::InvalidVersion);
         }
         admin.require_auth();
         storage::set_admin(&env, &admin);
         storage::set_token(&env, &token_address);
         storage::set_fee_bps(&env, 0u32);
+        storage::set_version(&env, &version);
         events::emit_initialized(&env, &admin);
         Ok(())
     }
@@ -126,4 +135,55 @@ impl SplitEscrowContract {
     pub fn get_split(env: Env, split_id: u64) -> Result<Split, Error> {
         storage::get_split(&env, split_id).ok_or(Error::SplitNotFound)
     }
+
+    pub fn get_version(env: Env) -> String {
+        storage::get_version(&env)
+    }
+
+    pub fn upgrade_version(env: Env, new_version: String) -> Result<(), Error> {
+        if !storage::has_admin(&env) {
+            return Err(Error::NotInitialized);
+        }
+        let admin = storage::get_admin(&env);
+        admin.require_auth();
+
+        if !is_valid_semver(&new_version) {
+            return Err(Error::InvalidVersion);
+        }
+
+        let old_version = storage::get_version(&env);
+        storage::set_version(&env, &new_version);
+        events::emit_contract_upgraded(&env, old_version, new_version);
+        Ok(())
+    }
+}
+
+fn is_valid_semver(version: &String) -> bool {
+    let mut dot_count = 0;
+    let mut segment_has_digit = false;
+    let len = version.len() as usize;
+
+    if len == 0 || len > 16 {
+        return false;
+    }
+
+    let mut buf = [0u8; 16];
+    version.copy_into_slice(&mut buf[..len]);
+
+    for i in 0..len {
+        let char = buf[i];
+        if char == b'.' {
+            if !segment_has_digit {
+                return false;
+            }
+            dot_count += 1;
+            segment_has_digit = false;
+        } else if char >= b'0' && char <= b'9' {
+            segment_has_digit = true;
+        } else {
+            return false;
+        }
+    }
+
+    dot_count == 2 && segment_has_digit
 }

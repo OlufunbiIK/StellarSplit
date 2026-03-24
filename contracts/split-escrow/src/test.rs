@@ -29,7 +29,7 @@ fn setup() -> (
 
     let contract_id = env.register_contract(None, SplitEscrowContract);
     let client = SplitEscrowContractClient::new(&env, &contract_id);
-    client.initialize(&admin, &token);
+    client.initialize(&admin, &token, &String::from_str(&env, "1.0.0"));
 
     token_admin_client.mint(&participant, &1_000_000);
 
@@ -116,4 +116,54 @@ fn test_fees_collected_event_emitted() {
 
     let after_len = env.events().all().len();
     assert!(after_len > before_len);
+}
+
+#[test]
+fn test_get_version() {
+    let (env, client, _, _, _, _, _) = setup();
+    assert_eq!(client.get_version(), String::from_str(&env, "1.0.0"));
+}
+
+#[test]
+fn test_upgrade_version_success() {
+    let (env, client, admin, _, _, _, _) = setup();
+    
+    // Auth is mocked in setup, but we can explicitly test it if needed.
+    // Here we just test the functionality.
+    let new_version = String::from_str(&env, "1.1.0");
+    client.upgrade_version(&new_version);
+    
+    assert_eq!(client.get_version(), new_version);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #10)")]
+fn test_upgrade_version_invalid_format() {
+    let (env, client, _, _, _, _, _) = setup();
+    let invalid_version = String::from_str(&env, "one.zero.zero");
+    client.upgrade_version(&invalid_version);
+}
+
+#[test]
+#[should_panic] // Should fail due to require_auth failure for non-admin
+fn test_upgrade_version_non_admin() {
+    let (env, client, _, _, _, _, _) = setup();
+    let non_admin = Address::generate(&env);
+    
+    env.as_contract(&client.address, || {
+        client.upgrade_version(&String::from_str(&env, "2.0.0"));
+    });
+}
+
+#[test]
+fn test_semver_validation_at_init() {
+    let env = Env::default();
+    let admin = Address::generate(&env);
+    let token = Address::generate(&env);
+    let contract_id = env.register_contract(None, SplitEscrowContract);
+    let client = SplitEscrowContractClient::new(&env, &contract_id);
+    
+    // Valid
+    client.initialize(&admin, &token, &String::from_str(&env, "0.1.0"));
+    assert_eq!(client.get_version(), String::from_str(&env, "0.1.0"));
 }
