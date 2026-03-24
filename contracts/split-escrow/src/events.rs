@@ -31,3 +31,10 @@ pub fn emit_fees_collected(env: &Env, amount: i128, treasury: &Address) {
         (amount, treasury.clone()),
     );
 }
+
+pub fn emit_contract_upgraded(env: &Env, old_version: String, new_version: String) {
+    env.events().publish(
+        (Symbol::new(env, "ContractUpgraded"),),
+        (old_version, new_version),
+    );
+}

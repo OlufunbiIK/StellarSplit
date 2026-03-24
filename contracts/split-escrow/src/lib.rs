@@ -17,15 +17,40 @@ pub struct SplitEscrowContract;
 
 #[contractimpl]
 impl SplitEscrowContract {
-    pub fn initialize(env: Env, admin: Address, token_address: Address) -> Result<(), Error> {
+    pub fn initialize(
+        env: Env,
+        admin: Address,
+        token_address: Address,
+        version: String,
+    ) -> Result<(), Error> {
         if storage::has_admin(&env) {
             return Err(Error::AlreadyInitialized);
         }
         admin.require_auth();
+
+        validate_version(&version)?;
+
         storage::set_admin(&env, &admin);
         storage::set_token(&env, &token_address);
         storage::set_fee_bps(&env, 0u32);
+        storage::set_version(&env, &version);
         events::emit_initialized(&env, &admin);
+        Ok(())
+    }
+
+    pub fn get_version(env: Env) -> String {
+        storage::get_version(&env)
+    }
+
+    pub fn upgrade_version(env: Env, new_version: String) -> Result<(), Error> {
+        let admin = storage::get_admin(&env);
+        admin.require_auth();
+
+        validate_version(&new_version)?;
+
+        let old_version = storage::get_version(&env);
+        storage::set_version(&env, &new_version);
+        events::emit_contract_upgraded(&env, old_version, new_version);
         Ok(())
     }
 
@@ -126,4 +151,38 @@ impl SplitEscrowContract {
     pub fn get_split(env: Env, split_id: u64) -> Result<Split, Error> {
         storage::get_split(&env, split_id).ok_or(Error::SplitNotFound)
     }
+}
+
+fn validate_version(version: &String) -> Result<(), Error> {
+    let len = version.len() as usize;
+    if len == 0 || len > 32 {
+        return Err(Error::InvalidVersion);
+    }
+
+    let mut buf = [0u8; 32];
+    version.copy_into_slice(&mut buf[..len]);
+
+    let mut dot_count = 0;
+    let mut part_len = 0;
+
+    for i in 0..len {
+        let b = buf[i];
+        if b == b'.' {
+            if part_len == 0 {
+                return Err(Error::InvalidVersion);
+            }
+            dot_count += 1;
+            part_len = 0;
+        } else if b >= b'0' && b <= b'9' {
+            part_len += 1;
+        } else {
+            return Err(Error::InvalidVersion);
+        }
+    }
+
+    if dot_count != 2 || part_len == 0 {
+        return Err(Error::InvalidVersion);
+    }
+
+    Ok(())
 }
