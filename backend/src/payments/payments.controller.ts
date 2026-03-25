@@ -41,11 +41,19 @@ export class PaymentsController {
       `Received payment submission: ${JSON.stringify(submitPaymentDto)}`,
     );
 
-    const { splitId, participantId, stellarTxHash } = submitPaymentDto;
+    const {
+      splitId,
+      participantId,
+      stellarTxHash,
+      idempotencyKey,
+      externalReference,
+    } = submitPaymentDto;
     return await this.paymentsService.submitPayment(
       splitId,
       participantId,
       stellarTxHash,
+      idempotencyKey,
+      externalReference,
     );
   }
 
