@@ -41,6 +41,7 @@ import { SearchModule } from "./search/search.module";
 import { SettlementModule } from "./settlement/settlement.module";
 import { SplitCommentsModule } from "./split-comments/split-comments.module";
 import { SplitHistoryModule } from "./split-history/split-history.module";
+import { SplitTemplateModule } from "./split-template/split-template.module";
 import { StellarModule } from "./stellar/stellar.module";
 import { TemplatesModule } from "./templates/templates.module";
 import { UploadModule } from "./uploads/upload.module";
@@ -48,85 +49,86 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
 // Duplicate imports removed; already imported above.
 // Load environment variables
 dotenv.config({
-  path: path.resolve(__dirname, "../.env"),
+    path: path.resolve(__dirname, "../.env"),
 });
 
 @Module({
-  imports: [
-    // ✅ Config
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: [".env", ".env.local"],
-      load: [appConfig, databaseConfig],
-    }),
+    imports: [
+        // ✅ Config
+        ConfigModule.forRoot({
+            isGlobal: true,
+            envFilePath: [".env", ".env.local"],
+            load: [appConfig, databaseConfig],
+        }),
 
-    // ✅ Event system (mentions, activity feed, etc.)
-    EventEmitterModule.forRoot(),
+        // ✅ Event system (mentions, activity feed, etc.)
+        EventEmitterModule.forRoot(),
 
-    // ✅ Database
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const dbConfig = configService.get("database");
-        return {
-          type: "postgres",
-          host: dbConfig.host,
-          port: dbConfig.port,
-          username: dbConfig.username,
-          password: dbConfig.password,
-          database: dbConfig.name,
-          entities: [path.join(__dirname, "**/*.entity{.ts,.js}")],
-          synchronize: dbConfig.synchronize,
-          logging: dbConfig.logging,
-        };
-      },
-    }),
+        // ✅ Database
+        TypeOrmModule.forRootAsync({
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => {
+                const dbConfig = configService.get("database");
+                return {
+                    type: "postgres",
+                    host: dbConfig.host,
+                    port: dbConfig.port,
+                    username: dbConfig.username,
+                    password: dbConfig.password,
+                    database: dbConfig.name,
+                    entities: [path.join(__dirname, "**/*.entity{.ts,.js}")],
+                    synchronize: dbConfig.synchronize,
+                    logging: dbConfig.logging,
+                };
+            },
+        }),
 
-    // ✅ Queue / background jobs
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        redis: getRedisConnectionOptions(configService),
-      }),
-    }),
+        // ✅ Queue / background jobs
+        BullModule.forRootAsync({
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                redis: getRedisConnectionOptions(configService),
+            }),
+        }),
 
-    // ✅ Feature modules
-    HealthModule,
-    StellarModule,
-    PaymentsModule,
-    CurrencyModule,
-    SplitsModule,
-    ItemsModule,
-    EmailModule,
-    RecurringSplitsModule,
-    ReceiptsModule,
-    SplitHistoryModule,
-    ActivitiesModule,
-    SearchModule,
-    FriendshipModule,
-    InvitationsModule,
-    MentionsModule,
-    SplitCommentsModule,
-    // Analytics module for user spending & reports
-    AnalyticsModule,
-    ExportModule,
-    // Webhooks module for external event notifications
-    WebhooksModule,
-    // Dispute resolution system for split conflicts
-    DisputesModule,
-    // DAO Governance system for platform decisions
-    GovernanceModule,
-    // Compliance module for tax reporting and exports
-    ComplianceModule,
-    SettlementModule,
-    TemplatesModule,
-    PushNotificationsModule,
-    ArchivingModule,
-    GatewayModule,
-    SchedulerModule,
-    UploadModule,
-    ProfileModule,
-    // Duplicated modules were already included earlier.
-  ],
+        // ✅ Feature modules
+        HealthModule,
+        StellarModule,
+        PaymentsModule,
+        CurrencyModule,
+        SplitsModule,
+        ItemsModule,
+        EmailModule,
+        RecurringSplitsModule,
+        ReceiptsModule,
+        SplitHistoryModule,
+        ActivitiesModule,
+        SearchModule,
+        FriendshipModule,
+        InvitationsModule,
+        MentionsModule,
+        SplitCommentsModule,
+        // Analytics module for user spending & reports
+        AnalyticsModule,
+        ExportModule,
+        // Webhooks module for external event notifications
+        WebhooksModule,
+        // Dispute resolution system for split conflicts
+        DisputesModule,
+        // DAO Governance system for platform decisions
+        GovernanceModule,
+        // Compliance module for tax reporting and exports
+        ComplianceModule,
+        SettlementModule,
+        SplitTemplateModule,
+        TemplatesModule,
+        PushNotificationsModule,
+        ArchivingModule,
+        GatewayModule,
+        SchedulerModule,
+        UploadModule,
+        ProfileModule,
+        // Duplicated modules were already included earlier.
+    ],
 })
 export class AppModule {}
