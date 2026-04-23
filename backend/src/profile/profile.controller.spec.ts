@@ -73,7 +73,7 @@ describe('ProfileController', () => {
         displayName: 'Alice Updated',
         preferredCurrency: 'EUR' as const,
       };
-      const result = await controller.update(walletAddress, dto);
+      const result = await controller.update(walletAddress, dto, {} as any);
       expect(result).toEqual(mockProfile);
       expect(profileService.update).toHaveBeenCalledWith(walletAddress, dto);
     });

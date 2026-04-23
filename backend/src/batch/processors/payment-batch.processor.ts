@@ -8,6 +8,7 @@ import { BatchJob, BatchJobStatus } from "../entities/batch-job.entity";
 import { BatchOperation, BatchOperationStatus } from "../entities/batch-operation.entity";
 import { BatchProgressService } from "../batch-progress.service";
 import { BatchJobData } from "../batch.service";
+import { PaymentRequestContext } from "../../payments/payment-request-context";
 import { PaymentsService } from "../../payments/payments.service";
 
 interface PaymentPayload {
@@ -132,11 +133,14 @@ export class PaymentBatchProcessor {
       const payload = operation.payload as PaymentPayload;
       this.validatePayload(payload);
 
+      const context: PaymentRequestContext = {
+        idempotencyKey: payload.idempotencyKey,
+      };
       const result = await this.paymentsService.submitPayment(
         payload.splitId,
         payload.participantId,
         payload.stellarTxHash,
-        payload.idempotencyKey,
+        context,
       );
 
       await this.batchProgressService.markOperationCompleted(operation.id, {

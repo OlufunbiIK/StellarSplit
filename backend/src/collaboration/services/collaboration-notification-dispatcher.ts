@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PushNotificationsService } from '../../push-notifications/push-notifications.service';
+import { NotificationEventType } from '../../push-notifications/entities/notification-preference.entity';
 import { ActivitiesService } from '../../modules/activities/activities.service';
+import { ActivityType } from '../../entities/activity.entity';
 import {
   CollaborationInvitationNotification,
   CollaborationRemovalNotification,
@@ -14,7 +16,7 @@ export interface DispatchResult {
 }
 
 /**
- * Fans collaboration events out to push, email, and in-app channels.
+ * Fans collaboration events out to push and in-app channels.
  * Each channel is attempted independently so one failure does not block others.
  */
 @Injectable()
@@ -32,21 +34,17 @@ export class CollaborationNotificationDispatcher {
   ): Promise<DispatchResult> {
     const result: DispatchResult = { push: false, inApp: false, failures: [] };
 
-    await this.tryPush(result, recipientWallet, {
+    await this.tryPush(result, recipientWallet, NotificationEventType.PAYMENT_RECEIVED, {
       title: 'Collaboration Invitation',
       body: `You've been invited to collaborate on "${notification.trackTitle}" as ${notification.role}.`,
       data: { collaborationId: notification.collaborationId, type: 'collaboration_invitation' },
     });
 
-    await this.tryInApp(result, {
-      userId: recipientWallet,
-      type: 'collaboration_invitation',
-      metadata: {
-        collaborationId: notification.collaborationId,
-        inviterWallet: notification.inviterWallet,
-        trackTitle: notification.trackTitle,
-        role: notification.role,
-      },
+    await this.tryInApp(result, recipientWallet, ActivityType.PARTICIPANT_ADDED, {
+      collaborationId: notification.collaborationId,
+      inviterWallet: notification.inviterWallet,
+      trackTitle: notification.trackTitle,
+      role: notification.role,
     });
 
     this.logOutcome('invitation', recipientWallet, result);
@@ -59,20 +57,16 @@ export class CollaborationNotificationDispatcher {
   ): Promise<DispatchResult> {
     const result: DispatchResult = { push: false, inApp: false, failures: [] };
 
-    await this.tryPush(result, recipientWallet, {
+    await this.tryPush(result, recipientWallet, NotificationEventType.PAYMENT_RECEIVED, {
       title: 'Collaboration Response',
       body: `${notification.artistName} has ${notification.status} your collaboration invitation.`,
       data: { collaborationId: notification.collaborationId, type: 'collaboration_response' },
     });
 
-    await this.tryInApp(result, {
-      userId: recipientWallet,
-      type: 'collaboration_response',
-      metadata: {
-        collaborationId: notification.collaborationId,
-        artistWallet: notification.artistWallet,
-        status: notification.status,
-      },
+    await this.tryInApp(result, recipientWallet, ActivityType.PAYMENT_RECEIVED, {
+      collaborationId: notification.collaborationId,
+      artistWallet: notification.artistWallet,
+      status: notification.status,
     });
 
     this.logOutcome('response', recipientWallet, result);
@@ -85,20 +79,16 @@ export class CollaborationNotificationDispatcher {
   ): Promise<DispatchResult> {
     const result: DispatchResult = { push: false, inApp: false, failures: [] };
 
-    await this.tryPush(result, recipientWallet, {
+    await this.tryPush(result, recipientWallet, NotificationEventType.PAYMENT_RECEIVED, {
       title: 'Removed from Collaboration',
       body: `You have been removed from a collaboration by ${notification.removerWallet}.`,
       data: { collaborationId: notification.collaborationId, type: 'collaboration_removal' },
     });
 
-    await this.tryInApp(result, {
-      userId: recipientWallet,
-      type: 'collaboration_removal',
-      metadata: {
-        collaborationId: notification.collaborationId,
-        removerWallet: notification.removerWallet,
-        reason: notification.removalReason,
-      },
+    await this.tryInApp(result, recipientWallet, ActivityType.SPLIT_EDITED, {
+      collaborationId: notification.collaborationId,
+      removerWallet: notification.removerWallet,
+      reason: notification.removalReason,
     });
 
     this.logOutcome('removal', recipientWallet, result);
@@ -110,10 +100,11 @@ export class CollaborationNotificationDispatcher {
   private async tryPush(
     result: DispatchResult,
     userId: string,
-    payload: { title: string; body: string; data: Record<string, unknown> },
+    eventType: NotificationEventType,
+    payload: { title: string; body: string; data: Record<string, string> },
   ): Promise<void> {
     try {
-      await this.pushService.sendToUser(userId, payload);
+      await this.pushService.sendNotification(userId, eventType, payload.title, payload.body, payload.data);
       result.push = true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -124,15 +115,17 @@ export class CollaborationNotificationDispatcher {
 
   private async tryInApp(
     result: DispatchResult,
-    activity: { userId: string; type: string; metadata: Record<string, unknown> },
+    userId: string,
+    activityType: ActivityType,
+    metadata: Record<string, unknown>,
   ): Promise<void> {
     try {
-      await this.activitiesService.createActivity(activity);
+      await this.activitiesService.createActivity({ userId, activityType, metadata });
       result.inApp = true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       result.failures.push(`in-app: ${msg}`);
-      this.logger.warn(`In-app activity creation failed for ${activity.userId}: ${msg}`);
+      this.logger.warn(`In-app activity creation failed for ${userId}: ${msg}`);
     }
   }
 
