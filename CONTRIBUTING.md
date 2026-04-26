@@ -135,7 +135,7 @@ StellarSplit includes Soroban smart contracts that handle on-chain escrow and pa
 cd contracts
 
 # Install Rust and WebAssembly target
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rust-up.rs | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
 
 # Install Soroban CLI (optional but recommended)
