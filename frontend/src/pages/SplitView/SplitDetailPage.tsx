@@ -24,138 +24,13 @@ import {
     createActivityRecord,
     createItem,
     deleteItem,
-    fetchProfile,
-    fetchReceiptSignedUrl,
-    fetchSplitById,
-    fetchSplitReceipts,
-    fetchUserActivities,
     getApiErrorMessage,
     normalizeDecimal,
     submitSplitPayment,
     updateSplit,
-    type ApiActivityRecord,
-    type ApiProfile,
-    type ApiSplitParticipant,
 } from '../../utils/api-client';
-import { getStoredSplitParticipantDirectory } from '../../utils/session';
+import { splitDetailRepository } from '../../services/splitDetailRepository';
 
-function matchesCurrentUser(
-    participant: ApiSplitParticipant,
-    currentUserId: string | null,
-): boolean {
-    if (!currentUserId) {
-        return false;
-    }
-
-    return participant.walletAddress === currentUserId || participant.userId === currentUserId;
-}
-
-function shortId(value: string): string {
-    return `${value.slice(0, 6)}...${value.slice(-4)}`;
-}
-
-function resolveParticipantName(
-    participant: ApiSplitParticipant,
-    splitId: string,
-    currentUserId: string | null,
-    profileMap: Record<string, ApiProfile>,
-): string {
-    if (matchesCurrentUser(participant, currentUserId)) {
-        return 'You';
-    }
-
-    if (participant.walletAddress && profileMap[participant.walletAddress]?.displayName) {
-        return profileMap[participant.walletAddress].displayName ?? shortId(participant.walletAddress);
-    }
-
-    const storedDirectory = getStoredSplitParticipantDirectory(splitId);
-    if (storedDirectory[participant.userId]?.name) {
-        return storedDirectory[participant.userId].name;
-    }
-
-    if (participant.walletAddress) {
-        return shortId(participant.walletAddress);
-    }
-
-    return shortId(participant.userId);
-}
-
-function buildActivityMessage(
-    activity: ApiActivityRecord,
-    splitTitle: string,
-): ActivityFeedItem {
-    const metadataTitle =
-        typeof activity.metadata.title === 'string' ? activity.metadata.title : splitTitle;
-    const amount =
-        typeof activity.metadata.amount === 'number' || typeof activity.metadata.amount === 'string'
-            ? normalizeDecimal(activity.metadata.amount as number | string)
-            : 0;
-    const actor =
-        typeof activity.metadata.actorName === 'string'
-            ? activity.metadata.actorName
-            : 'Someone';
-
-    switch (activity.activityType) {
-        case 'split_created':
-            return {
-                id: activity.id,
-                type: 'custom',
-                userName: actor,
-                message: `created ${metadataTitle}`,
-                timestamp: activity.createdAt,
-                splitId: activity.splitId,
-            };
-        case 'payment_made':
-            return {
-                id: activity.id,
-                type: 'payment-status',
-                userName: actor,
-                message: `paid ${amount > 0 ? amount.toFixed(2) : ''} toward ${metadataTitle}`.trim(),
-                timestamp: activity.createdAt,
-                splitId: activity.splitId,
-            };
-        case 'payment_received':
-            return {
-                id: activity.id,
-                type: 'payment-status',
-                userName: actor,
-                message: `received a payment for ${metadataTitle}`,
-                timestamp: activity.createdAt,
-                splitId: activity.splitId,
-            };
-        case 'split_completed':
-            return {
-                id: activity.id,
-                type: 'payment-status',
-                userName: actor,
-                message: `marked ${metadataTitle} as completed`,
-                timestamp: activity.createdAt,
-                splitId: activity.splitId,
-            };
-        case 'split_edited':
-            return {
-                id: activity.id,
-                type: 'item-updated',
-                userName: actor,
-                message: `updated ${metadataTitle}`,
-                timestamp: activity.createdAt,
-                splitId: activity.splitId,
-            };
-        default:
-            return {
-                id: activity.id,
-                type: 'custom',
-                userName: actor,
-                message: `added an update to ${metadataTitle}`,
-                timestamp: activity.createdAt,
-                splitId: activity.splitId,
-            };
-    }
-}
-
-function roundCurrency(value: number): number {
-    return Math.round(value * 100) / 100;
-}
 
 export const SplitDetailPage = () => {
     const { t } = useTranslation();
@@ -195,87 +70,12 @@ export const SplitDetailPage = () => {
         setIsNotFound(false);
 
         try {
-            const splitRecord = await fetchSplitById(splitId);
-            const walletAddresses = Array.from(
-                new Set(
-                    [splitRecord.creatorWalletAddress, ...splitRecord.participants.map((participant) => participant.walletAddress)]
-                        .filter((walletAddress): walletAddress is string => Boolean(walletAddress)),
-                ),
-            );
-
-            const [profiles, latestReceiptUrl, activitiesResponse] = await Promise.all([
-                Promise.allSettled(walletAddresses.map((walletAddress) => fetchProfile(walletAddress))),
-                activeUserId
-                    ? fetchSplitReceipts(splitId)
-                        .then(async (receipts) => {
-                            const latestReceipt = [...receipts].sort(
-                                (left, right) =>
-                                    new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
-                            )[0];
-                            if (!latestReceipt) {
-                                return null;
-                            }
-
-                            return fetchReceiptSignedUrl(latestReceipt.id);
-                        })
-                        .catch(() => null)
-                    : Promise.resolve(null),
-                activeUserId
-                    ? fetchUserActivities(activeUserId, { splitId, limit: 20 }).catch(() => null)
-                    : Promise.resolve(null),
-            ]);
-
-            const profileMap = profiles.reduce<Record<string, ApiProfile>>((map, result, index) => {
-                if (result.status === 'fulfilled' && result.value) {
-                    map[walletAddresses[index]] = result.value;
-                }
-                return map;
-            }, {});
-
-            const participants: Participant[] = splitRecord.participants.map((participant) => {
-                const totalOwed = normalizeDecimal(participant.amountOwed);
-                const amountPaid = normalizeDecimal(participant.amountPaid);
-                return {
-                    id: participant.id,
-                    userId: participant.userId,
-                    name: resolveParticipantName(participant, splitRecord.id, activeUserId, profileMap),
-                    amountOwed: totalOwed,
-                    amountPaid,
-                    amountDue: Math.max(0, roundCurrency(totalOwed - amountPaid)),
-                    status: participant.status,
-                    isCurrentUser: matchesCurrentUser(participant, activeUserId),
-                    walletAddress: participant.walletAddress ?? undefined,
-                };
+            const viewModel = await splitDetailRepository.getSplitDetail(splitId, {
+                currentUserId: activeUserId,
             });
 
-            const nextSplit: Split = {
-                id: splitRecord.id,
-                title: splitRecord.description?.trim() || `Split ${splitRecord.id.slice(0, 8)}`,
-                totalAmount: normalizeDecimal(splitRecord.totalAmount),
-                amountPaid: normalizeDecimal(splitRecord.amountPaid),
-                currency: splitRecord.preferredCurrency || 'XLM',
-                date: splitRecord.createdAt,
-                status: splitRecord.status,
-                receiptUrl: latestReceiptUrl ?? undefined,
-                creatorWalletAddress: splitRecord.creatorWalletAddress ?? undefined,
-                preferredCurrency: splitRecord.preferredCurrency ?? undefined,
-                participants,
-                items: (splitRecord.items ?? []).map((item) => ({
-                    id: item.id,
-                    name: item.name,
-                    price: normalizeDecimal(item.totalPrice),
-                    quantity: item.quantity,
-                    unitPrice: normalizeDecimal(item.unitPrice),
-                    assignedToIds: item.assignedToIds,
-                })),
-            };
-
-            setSplit(nextSplit);
-            setActivityItems(
-                (activitiesResponse?.data ?? []).map((activity) =>
-                    buildActivityMessage(activity, nextSplit.title),
-                ),
-            );
+            setSplit(viewModel.split);
+            setActivityItems(viewModel.activityItems);
         } catch (error) {
             const message = getApiErrorMessage(error);
             if (message.toLowerCase().includes('not found')) {
