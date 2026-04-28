@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,21 +18,29 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { WebhooksService } from './webhooks.service';
 import { WebhookDeliveryService } from './webhook-delivery.service';
+import { WebhookPolicyService } from './webhook-policy.service';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
 import { TestWebhookDto } from './dto/test-webhook.dto';
 import { Webhook } from './webhook.entity';
 import { WebhookDelivery } from './webhook-delivery.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthUser } from '../auth/types/auth-user.interface';
 
 @ApiTags('Webhooks')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('webhooks')
 export class WebhooksController {
   constructor(
     private readonly webhooksService: WebhooksService,
     private readonly deliveryService: WebhookDeliveryService,
+    private readonly policyService: WebhookPolicyService,
   ) {}
 
   @Post()
@@ -43,24 +52,23 @@ export class WebhooksController {
     type: Webhook,
   })
   @ApiResponse({ status: 400, description: 'Invalid webhook data' })
-  async create(@Body(ValidationPipe) createWebhookDto: CreateWebhookDto) {
+  async create(
+    @Body(ValidationPipe) createWebhookDto: CreateWebhookDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    createWebhookDto.userId = user.id;
     return await this.webhooksService.create(createWebhookDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all webhooks' })
-  @ApiQuery({
-    name: 'userId',
-    required: false,
-    description: 'Filter webhooks by user ID',
-  })
+  @ApiOperation({ summary: 'Get all webhooks for current user' })
   @ApiResponse({
     status: 200,
     description: 'List of webhooks',
     type: [Webhook],
   })
-  async findAll(@Query('userId') userId?: string) {
-    return await this.webhooksService.findAll(userId);
+  async findAll(@CurrentUser() user: AuthUser) {
+    return await this.webhooksService.findByUserId(user.id);
   }
 
   @Get(':id')
@@ -72,8 +80,10 @@ export class WebhooksController {
     type: Webhook,
   })
   @ApiResponse({ status: 404, description: 'Webhook not found' })
-  async findOne(@Param('id') id: string) {
-    return await this.webhooksService.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    const webhook = await this.webhooksService.findOne(id);
+    this.policyService.assertOwnership(user, webhook);
+    return webhook;
   }
 
   @Patch(':id')
@@ -88,7 +98,10 @@ export class WebhooksController {
   async update(
     @Param('id') id: string,
     @Body(ValidationPipe) updateWebhookDto: UpdateWebhookDto,
+    @CurrentUser() user: AuthUser,
   ) {
+    const webhook = await this.webhooksService.findOne(id);
+    this.policyService.assertOwnership(user, webhook);
     return await this.webhooksService.update(id, updateWebhookDto);
   }
 
@@ -98,7 +111,9 @@ export class WebhooksController {
   @ApiParam({ name: 'id', description: 'Webhook ID' })
   @ApiResponse({ status: 204, description: 'Webhook deleted successfully' })
   @ApiResponse({ status: 404, description: 'Webhook not found' })
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    const webhook = await this.webhooksService.findOne(id);
+    this.policyService.assertOwnership(user, webhook);
     await this.webhooksService.remove(id);
   }
 
@@ -114,10 +129,11 @@ export class WebhooksController {
   async testWebhook(
     @Param('id') id: string,
     @Body(ValidationPipe) testDto: TestWebhookDto,
+    @CurrentUser() user: AuthUser,
   ) {
     const webhook = await this.webhooksService.findOne(id);
+    this.policyService.assertOwnership(user, webhook);
 
-    // Use the delivery service to trigger a test event
     const payload = testDto.payload || {
       test: true,
       message: 'This is a test webhook',
@@ -153,9 +169,11 @@ export class WebhooksController {
   })
   async getDeliveries(
     @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
     @Query('limit') limit?: number,
   ) {
-    await this.webhooksService.findOne(id); // Verify webhook exists
+    const webhook = await this.webhooksService.findOne(id);
+    this.policyService.assertOwnership(user, webhook);
     return await this.deliveryService.getDeliveryLogs(id, limit);
   }
 
@@ -175,8 +193,9 @@ export class WebhooksController {
       },
     },
   })
-  async getStats(@Param('id') id: string) {
-    await this.webhooksService.findOne(id); // Verify webhook exists
+  async getStats(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    const webhook = await this.webhooksService.findOne(id);
+    this.policyService.assertOwnership(user, webhook);
     return await this.deliveryService.getDeliveryStats(id);
   }
 }

@@ -1,15 +1,16 @@
-import { IsString, IsUrl, IsArray, IsNotEmpty, ArrayNotEmpty } from 'class-validator';
+import { IsString, IsUrl, IsArray, IsNotEmpty, ArrayNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { WebhookEventType } from '../webhook.entity';
 
 export class CreateWebhookDto {
   @ApiProperty({
-    description: 'User ID who owns this webhook',
+    description: 'User ID who owns this webhook (automatically assigned from auth context)',
     example: 'user-123',
+    required: false,
   })
   @IsString()
-  @IsNotEmpty()
-  userId!: string;
+  @IsOptional()
+  userId?: string;
 
   @ApiProperty({
     description: 'Webhook endpoint URL',
