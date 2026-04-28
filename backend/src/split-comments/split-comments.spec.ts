@@ -3,7 +3,7 @@ import { SplitCommentService } from './provider/provider.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SplitComment } from './split-comment.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { MentionService } from '@/mentions/provider/service';
+import { MentionService } from '../mentions/provider/service';
 
 const mockRepo = {
   save: jest.fn(),

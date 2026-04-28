@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SplitComment } from '../split-comment.entity';
 import { CreateSplitCommentDto } from '../dto/split-comment.dto';
-import { MentionService } from '@/mentions/provider/service';
+import { MentionService } from '../../mentions/provider/service';
 
 @Injectable()
 export class SplitCommentService {
