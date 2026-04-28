@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { HealthCheckService } from './health-check.service';
 
 @Injectable()
 export class HealthService {
+  constructor(private readonly healthCheckService: HealthCheckService) {}
+
   getHealth() {
-    return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-    };
+    return this.healthCheckService.getBasicHealth();
   }
 }

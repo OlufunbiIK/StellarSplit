@@ -58,3 +58,19 @@ export function getRedisConnectionOptions(
     ...(password ? { password } : {}),
   };
 }
+
+export function getRedisUrl(
+  configService: Pick<ConfigService, "get">,
+): string {
+  const url = getString(configService, "REDIS_URL");
+  if (url) return url;
+
+  const options = getRedisConnectionOptions(configService);
+  const user = options.username ? encodeURIComponent(options.username) : "";
+  const pass = options.password ? encodeURIComponent(options.password) : "";
+  let auth = "";
+  if (user || pass) {
+    auth = `${user}:${pass}@`;
+  }
+  return `redis://${auth}${options.host}:${options.port}`;
+}

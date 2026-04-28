@@ -6,12 +6,14 @@ import { WebhookDeliveryService } from './webhook-delivery.service';
 import { Webhook } from './webhook.entity';
 import { WebhookDelivery, DeliveryStatus } from './webhook-delivery.entity';
 import { WebhookEventType } from './webhook.entity';
+import { WebhookRateLimitStore } from './webhook-rate-limit.store';
 
 describe('WebhookDeliveryService', () => {
   let service: WebhookDeliveryService;
   let webhookRepository: Repository<Webhook>;
   let deliveryRepository: Repository<WebhookDelivery>;
   let webhookQueue: any;
+  let rateLimitStore: any;
 
   const mockWebhookRepository = {
     createQueryBuilder: jest.fn(),
@@ -27,6 +29,10 @@ describe('WebhookDeliveryService', () => {
 
   const mockQueue = {
     add: jest.fn(),
+  };
+
+  const mockRateLimitStore = {
+    checkRateLimit: jest.fn().mockResolvedValue(true),
   };
 
   beforeEach(async () => {
@@ -45,6 +51,10 @@ describe('WebhookDeliveryService', () => {
           provide: getQueueToken('webhook_queue'),
           useValue: mockQueue,
         },
+        {
+          provide: WebhookRateLimitStore,
+          useValue: mockRateLimitStore,
+        },
       ],
     }).compile();
 
@@ -56,6 +66,7 @@ describe('WebhookDeliveryService', () => {
       getRepositoryToken(WebhookDelivery),
     );
     webhookQueue = module.get(getQueueToken('webhook_queue'));
+    rateLimitStore = module.get(WebhookRateLimitStore);
   });
 
   afterEach(() => {
@@ -102,6 +113,43 @@ describe('WebhookDeliveryService', () => {
 
       expect(mockDeliveryRepository.create).toHaveBeenCalled();
       expect(mockDeliveryRepository.save).toHaveBeenCalled();
+      expect(mockQueue.add).toHaveBeenCalled();
+    });
+  });
+
+  describe('triggerSingleWebhook', () => {
+    it('should queue delivery for a single webhook without querying database', async () => {
+      const webhook: any = {
+        id: 'webhook-single',
+        userId: 'user-1',
+        url: 'https://example.com/test',
+        events: [WebhookEventType.SPLIT_CREATED],
+        secret: 'test-secret',
+        isActive: true,
+      };
+
+      mockDeliveryRepository.create.mockReturnValue({
+        id: 'delivery-test',
+        webhookId: 'webhook-single',
+        eventType: WebhookEventType.SPLIT_CREATED,
+        payload: { test: 'payload' },
+        status: DeliveryStatus.PENDING,
+      });
+      mockDeliveryRepository.save.mockResolvedValue({
+        id: 'delivery-test',
+      });
+      mockQueue.add.mockResolvedValue({});
+
+      await service.triggerSingleWebhook(
+        webhook,
+        WebhookEventType.SPLIT_CREATED,
+        { test: 'payload' },
+      );
+
+      expect(mockWebhookRepository.createQueryBuilder).not.toHaveBeenCalled();
+      expect(mockDeliveryRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        webhookId: 'webhook-single',
+      }));
       expect(mockQueue.add).toHaveBeenCalled();
     });
   });

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { shareOrCopy } from "../../utils/browserShare";
 import { useTranslation } from "react-i18next";
 import { Calculator, Download, Share2, Save, RefreshCw } from "lucide-react";
 import { EqualSplitCalc } from "./EqualSplitCalc";
@@ -155,22 +156,14 @@ export function SplitCalculator({ initialState }: SplitCalculatorProps) {
     setSavedTemplates((prev) => prev.filter((item) => item.name !== name));
   };
 
+  // Issue #488 — use browserShare adapter
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}${buildCalculatorShareUrl(state)}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: t("calculator.shareTitle"),
-          text: t("calculator.shareText"),
-          url: shareUrl,
-        });
-      } catch (err) {
-        console.error("Share failed:", err);
-      }
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
-    }
+    await shareOrCopy({
+      title: t("calculator.shareTitle"),
+      text: t("calculator.shareText"),
+      url: shareUrl,
+    });
   };
 
   const handleReset = () => {

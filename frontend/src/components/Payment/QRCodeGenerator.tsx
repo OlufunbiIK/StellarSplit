@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { buildPaymentDeepLinks, buildStellarPaymentURI, type StellarPaymentRequest } from '../../utils/stellar/paymentUri';
+import { copyToClipboard } from '../../utils/browserShare';
 import { QRDownload } from './QRDownload';
 
 interface QRCodeGeneratorProps {
@@ -47,12 +48,14 @@ export const QRCodeGenerator = ({
     }
 
     try {
-      await navigator.clipboard.writeText(paymentUri);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch (copyError) {
-      setError((copyError as Error).message);
-    }
+      // Issue #488 — use browserShare adapter
+      const result = await copyToClipboard(paymentUri);
+      if (result.success) {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1500);
+      } else {
+        setError(result.error.message);
+      }
   };
 
   if (uriError || error) {

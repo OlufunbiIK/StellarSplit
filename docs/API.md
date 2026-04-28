@@ -966,6 +966,8 @@ Base path: **`/api/api/analytics`**.
 
 ## Webhooks
 
+> **📖 Comprehensive Guide**: For detailed information on webhook implementation, signature verification, retries, rate limiting, and troubleshooting, see [WEBHOOKS.md](WEBHOOKS.md).
+
 | Method   | URL                            | Description              |
 | -------- | ------------------------------ | ------------------------ |
 | `POST`   | `/api/webhooks`                | Create webhook           |

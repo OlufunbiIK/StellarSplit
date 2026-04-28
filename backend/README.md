@@ -3,6 +3,8 @@
 This is the NestJS backend for StellarSplit. Follow this guide exactly to get
 your local environment running correctly against the current codebase.
 
+> **📖 Webhooks Guide**: For comprehensive documentation on webhook implementation, signature verification, delivery policies, and troubleshooting, see [docs/WEBHOOKS.md](../docs/WEBHOOKS.md).
+
 ---
 
 ## Prerequisites

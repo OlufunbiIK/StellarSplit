@@ -4,8 +4,8 @@
 
 StellarSplit is a mobile-first crypto bill splitting app powered by:
 
-- Frontend: Next.js (App Router)
-- Backend: NestJS (Modular Monorepo)
+- Frontend: React + Vite
+- Backend: NestJS (Standalone Package)
 - Blockchain: Stellar Network
 - AI: Receipt OCR + LLM Parsing
 - Database: PostgreSQL
@@ -19,7 +19,7 @@ StellarSplit is a mobile-first crypto bill splitting app powered by:
 
                 ┌──────────────────┐
                 │   Mobile Web UI  │
-                │   (Next.js)      │
+                │  (React + Vite)  │
                 └─────────┬────────┘
                           │
                           ▼
@@ -30,33 +30,38 @@ StellarSplit is a mobile-first crypto bill splitting app powered by:
                           │
      ┌────────────┬─────────────┬───────────────┐
      ▼            ▼             ▼               ▼
- Auth Module   Receipt Module  Split Module   Payment Module
-     │            │             │               │
-     ▼            ▼             ▼               ▼
-  PostgreSQL   AI Service    Business Logic   Stellar SDK
+
+Auth Module Receipt Module Split Module Payment Module
+│ │ │ │
+▼ ▼ ▼ ▼
+PostgreSQL AI Service Business Logic Stellar SDK
 
 ---
 
 # Core Modules
 
 ## 1. Auth Module
+
 - JWT issuance
 - Refresh tokens
 - Role-based access
 - Wallet linking
 
 ## 2. Receipt Module
+
 - Image upload
 - OCR parsing
 - AI structuring
 - Confidence scoring
 
 ## 3. Split Module
+
 - Participant allocation
 - Equal/custom split
 - Debt tracking
 
 ## 4. Payment Module
+
 - Stellar SDK integration
 - XLM / USDC transfer
 - Transaction confirmation
@@ -67,23 +72,27 @@ StellarSplit is a mobile-first crypto bill splitting app powered by:
 # Database Design (High-Level)
 
 Users
+
 - id
 - email
 - passwordHash
 - stellarPublicKey
 
 Receipts
+
 - id
 - userId
 - imageUrl
 - parsedData (JSONB)
 
 Splits
+
 - id
 - receiptId
 - status
 
 SplitParticipants
+
 - id
 - splitId
 - userId
@@ -91,6 +100,7 @@ SplitParticipants
 - status
 
 Payments
+
 - id
 - splitId
 - transactionHash
@@ -135,13 +145,15 @@ Payments
 # Deployment Architecture
 
 Production:
-- Vercel (Frontend)
+
+- Dockerized React + Vite frontend
 - Dockerized NestJS API
 - PostgreSQL (Managed)
 - Redis (Managed)
 - Stellar Mainnet
 
 Test:
+
 - Stellar Testnet
 - Separate database instance
 

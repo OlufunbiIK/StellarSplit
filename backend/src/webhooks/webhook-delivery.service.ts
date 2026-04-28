@@ -11,6 +11,7 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { Webhook } from './webhook.entity';
 import { WebhookDelivery, DeliveryStatus } from './webhook-delivery.entity';
 import { WebhookEventType } from './webhook.entity';
+import { WebhookRateLimitStore } from './webhook-rate-limit.store';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -21,9 +22,6 @@ export class WebhookDeliveryService {
   private readonly RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
   private readonly MAX_REQUESTS_PER_WINDOW = 10;
 
-  // In-memory rate limiting per webhook
-  private rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
   constructor(
     @InjectRepository(Webhook)
     private readonly webhookRepository: Repository<Webhook>,
@@ -31,6 +29,7 @@ export class WebhookDeliveryService {
     private readonly deliveryRepository: Repository<WebhookDelivery>,
     @InjectQueue('webhook_queue')
     private readonly webhookQueue: Queue,
+    private readonly rateLimitStore: WebhookRateLimitStore,
   ) {}
 
   /**
@@ -66,6 +65,18 @@ export class WebhookDeliveryService {
   }
 
   /**
+   * Trigger delivery to a single specific webhook
+   */
+  async triggerSingleWebhook(
+    webhook: Webhook,
+    eventType: WebhookEventType,
+    payload: Record<string, any>,
+  ): Promise<void> {
+    this.logger.log(`Triggering isolated ${eventType} event for webhook ${webhook.id}`);
+    await this.queueDelivery(webhook, eventType, payload);
+  }
+
+  /**
    * Queue a webhook delivery job
    */
   private async queueDelivery(
@@ -74,7 +85,13 @@ export class WebhookDeliveryService {
     payload: Record<string, any>,
   ): Promise<void> {
     // Check rate limiting
-    if (!this.checkRateLimit(webhook.id)) {
+    const withinLimit = await this.rateLimitStore.checkRateLimit(
+      webhook.id,
+      this.MAX_REQUESTS_PER_WINDOW,
+      this.RATE_LIMIT_WINDOW_MS
+    );
+    
+    if (!withinLimit) {
       this.logger.warn(
         `Rate limit exceeded for webhook ${webhook.id}. Skipping delivery.`,
       );
@@ -251,30 +268,6 @@ export class WebhookDeliveryService {
    */
   private generateSignature(payload: string, secret: string): string {
     return crypto.createHmac('sha256', secret).update(payload).digest('hex');
-  }
-
-  /**
-   * Check rate limiting for a webhook
-   */
-  private checkRateLimit(webhookId: string): boolean {
-    const now = Date.now();
-    const limit = this.rateLimitMap.get(webhookId);
-
-    if (!limit || now > limit.resetAt) {
-      // Reset or initialize
-      this.rateLimitMap.set(webhookId, {
-        count: 1,
-        resetAt: now + this.RATE_LIMIT_WINDOW_MS,
-      });
-      return true;
-    }
-
-    if (limit.count >= this.MAX_REQUESTS_PER_WINDOW) {
-      return false;
-    }
-
-    limit.count += 1;
-    return true;
   }
 
   /**

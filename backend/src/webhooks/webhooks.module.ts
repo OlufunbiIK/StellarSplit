@@ -4,6 +4,8 @@ import { BullModule } from '@nestjs/bull';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
 import { WebhookDeliveryService } from './webhook-delivery.service';
+import { WebhookRateLimitStore } from './webhook-rate-limit.store';
+import { TestWebhookDispatcher } from './test-webhook-dispatcher';
 import { WebhookProcessor } from './webhook.processor';
 import { WebhookPolicyService } from './webhook-policy.service';
 import { Webhook } from './webhook.entity';
@@ -26,7 +28,7 @@ import { WebhookDelivery } from './webhook-delivery.entity';
     }),
   ],
   controllers: [WebhooksController],
-  providers: [WebhooksService, WebhookDeliveryService, WebhookProcessor, WebhookPolicyService],
-  exports: [WebhooksService, WebhookDeliveryService, WebhookPolicyService],
+  providers: [WebhooksService, WebhookDeliveryService, WebhookProcessor, TestWebhookDispatcher, WebhookRateLimitStore, WebhookPolicyService],
+  exports: [WebhooksService, WebhookDeliveryService, TestWebhookDispatcher, WebhookLimitStore, WebhookPolicyService],
 })
 export class WebhooksModule {}

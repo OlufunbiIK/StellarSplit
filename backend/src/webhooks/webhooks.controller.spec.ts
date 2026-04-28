@@ -26,7 +26,6 @@ describe('WebhooksController', () => {
   };
 
   const mockDeliveryService = {
-    triggerEvent: jest.fn(),
     getDeliveryLogs: jest.fn(),
     getDeliveryStats: jest.fn(),
   };
@@ -49,10 +48,20 @@ describe('WebhooksController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [WebhooksController],
       providers: [
-        { provide: WebhooksService, useValue: mockWebhooksService },
-        { provide: WebhookDeliveryService, useValue: mockDeliveryService },
-        { provide: WebhookPolicyService, useValue: mockPolicyService },
-        { provide: TestWebhookDispatcher, useValue: mockTestDispatcher },
+      
+        {
+          provide: WebhooksService,
+          useValue: mockWebhooksService,
+        },
+                                                                   { provide: WebhookPolicyService, useValue: mockPolicyService },
+        {
+          provide: WebhookDeliveryService,
+          useValue: mockDeliveryService,
+        },
+        {
+          provide: TestWebhookDispatcher,
+          useValue: mockTestDispatcher,
+        },
       ],
     }).compile();
 
