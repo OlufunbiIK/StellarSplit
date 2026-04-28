@@ -1,5 +1,6 @@
 import { X, Copy, QrCode, Share2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { shareOrCopy, copyToClipboard } from '../../utils/browserShare';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -12,29 +13,17 @@ export const ShareModal = ({ isOpen, onClose, splitLink }: ShareModalProps) => {
 
     if (!isOpen) return null;
 
+    // Issue #488 — use browserShare adapter instead of raw browser APIs
     const handleCopy = async () => {
-        try {
-            await navigator.clipboard.writeText(splitLink);
-            // Ideally trigger a toast here
-        } catch (err) {
-            console.error('Failed to copy:', err);
-        }
+        await copyToClipboard(splitLink);
     };
 
     const handleShare = async () => {
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: t('split.shareTitle'),
-                    text: t('split.shareText'),
-                    url: splitLink,
-                });
-            } catch (err) {
-                console.error('Error sharing:', err);
-            }
-        } else {
-            handleCopy();
-        }
+        await shareOrCopy({
+            title: t('split.shareTitle'),
+            text: t('split.shareText'),
+            url: splitLink,
+        });
     };
 
     const handleBackdropClick = () => {

@@ -7,7 +7,7 @@ import {
 } from "../utils/sw-register";
 
 const InstallPrompt = () => {
-  const { installPrompt, installApp } = usePWA();
+  const { canInstall, installApp } = usePWA();
   const phase = useServiceWorkerStore((s) => s.phase);
   const error = useServiceWorkerStore((s) => s.error);
   const clearError = useServiceWorkerStore((s) => s.clearError);
@@ -15,7 +15,7 @@ const InstallPrompt = () => {
     (s) => s.dismissUpdateBanner,
   );
 
-  const showPwaCard = installPrompt;
+  const showPwaCard = canInstall;
   const showUpdate = phase === "update_available";
   const showError = phase === "error" && error;
   if (!showPwaCard && !showUpdate && !showError) return null;
