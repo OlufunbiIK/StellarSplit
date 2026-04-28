@@ -5,6 +5,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthorizationGuard } from '../auth/guards/authorization.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { RequestExportDto } from './dto/request-export.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { ComplianceSummaryQueryDto } from './dto/compliance-summary-query.dto';
 
 interface AuthRequest {
   user: { walletAddress: string };

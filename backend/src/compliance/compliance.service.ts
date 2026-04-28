@@ -40,7 +40,7 @@ export class ComplianceService {
         return this.splitRepo.save(split);
     }
 
-    async requestExport(userId: string, data: any) {
+    async requestExport(userId: string, data: RequestExportDto) {
         const request = this.exportRepo.create({
             userId,
             exportFormat: data.exportFormat,
