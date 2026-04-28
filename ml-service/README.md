@@ -10,6 +10,30 @@ This service provides real-time fraud detection using three ML models:
 2. **Neural Network** - Pattern recognition for known fraud patterns
 3. **Gradient Boosting** - Risk scoring based on combined features
 
+## Live vs Experimental Features
+
+### ✅ Live Endpoints (Mounted in Production)
+
+The following endpoints are currently mounted in `app/main.py` and available in production:
+
+- **Health Check** (`/health`, `/ready`) - Service health and readiness
+- **Analysis API** (`/api/v1/analyze/*`) - Fraud detection for splits and payments
+- **Models API** (`/api/v1/models/*`) - Model version management and retraining
+- **Feedback API** (`/api/v1/feedback/*`) - Feedback submission and statistics
+- **Metrics** (`/metrics`) - Prometheus metrics endpoint
+
+### 🧪 Experimental Features (Not Mounted)
+
+The following modules exist but are **not currently mounted** in the production API:
+
+- **Recommendations Module** (`app/recommendations/`) - AI-powered split recommendations
+    - Collaborative filtering for participant suggestions
+    - Time series analysis for split predictions
+    - Payment likelihood classification
+    - Fairness optimization
+
+> **Note**: The recommendations module is experimental and not exposed via the live API. See `app/recommendations/README.md` for details on how to test and integrate this module.
+
 ## Architecture
 
 ```
@@ -51,11 +75,13 @@ uvicorn app.main:app --reload
 ## API Endpoints
 
 ### Health Check
+
 ```bash
 GET /health
 ```
 
 ### Analyze Split
+
 ```bash
 POST /api/v1/analyze/split
 Content-Type: application/json
@@ -72,6 +98,7 @@ Content-Type: application/json
 ```
 
 ### Analyze Payment
+
 ```bash
 POST /api/v1/analyze/payment
 Content-Type: application/json
@@ -88,6 +115,7 @@ Content-Type: application/json
 ```
 
 ### Submit Feedback
+
 ```bash
 POST /api/v1/feedback
 Content-Type: application/json
@@ -101,6 +129,7 @@ Content-Type: application/json
 ```
 
 ### Model Management
+
 ```bash
 # Get model versions
 GET /api/v1/models/versions
@@ -119,14 +148,14 @@ GET /api/v1/models/training/{job_id}
 
 Environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | 8000 | Server port |
-| `DB_CONNECTION_STRING` | - | PostgreSQL connection |
-| `REDIS_URL` | - | Redis connection |
-| `MODEL_REGISTRY_PATH` | /models | Model storage path |
-| `HIGH_RISK_THRESHOLD` | 80 | High risk score threshold |
-| `MEDIUM_RISK_THRESHOLD` | 50 | Medium risk score threshold |
+| Variable                | Default | Description                 |
+| ----------------------- | ------- | --------------------------- |
+| `PORT`                  | 8000    | Server port                 |
+| `DB_CONNECTION_STRING`  | -       | PostgreSQL connection       |
+| `REDIS_URL`             | -       | Redis connection            |
+| `MODEL_REGISTRY_PATH`   | /models | Model storage path          |
+| `HIGH_RISK_THRESHOLD`   | 80      | High risk score threshold   |
+| `MEDIUM_RISK_THRESHOLD` | 50      | Medium risk score threshold |
 
 ## Model Training
 
@@ -169,12 +198,14 @@ Prometheus metrics available at `/metrics`:
 The service extracts features from:
 
 ### Split Features
+
 - Total amount, participant count
 - Time-based features (hour, day of week)
 - User history (account age, completion rate)
 - Network patterns (rapid creation, circular payments)
 
 ### Payment Features
+
 - Payment amount and timing
 - Asset type (XLM, USDC, etc.)
 - Split completion percentage
@@ -182,11 +213,11 @@ The service extracts features from:
 
 ## Risk Levels
 
-| Score | Level | Action |
-|-------|-------|--------|
-| 0-49 | Low | Log only |
-| 50-79 | Medium | Flag for review |
-| 80-100 | High | Block + immediate alert |
+| Score  | Level  | Action                  |
+| ------ | ------ | ----------------------- |
+| 0-49   | Low    | Log only                |
+| 50-79  | Medium | Flag for review         |
+| 80-100 | High   | Block + immediate alert |
 
 ## License
 
