@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
 import { WebhookDeliveryService } from './webhook-delivery.service';
+import { TestWebhookDispatcher } from './test-webhook-dispatcher';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
 import { TestWebhookDto } from './dto/test-webhook.dto';
@@ -11,6 +12,7 @@ describe('WebhooksController', () => {
   let controller: WebhooksController;
   let webhooksService: WebhooksService;
   let deliveryService: WebhookDeliveryService;
+  let testDispatcher: TestWebhookDispatcher;
 
   const mockWebhooksService = {
     create: jest.fn(),
@@ -21,9 +23,12 @@ describe('WebhooksController', () => {
   };
 
   const mockDeliveryService = {
-    triggerEvent: jest.fn(),
     getDeliveryLogs: jest.fn(),
     getDeliveryStats: jest.fn(),
+  };
+
+  const mockTestDispatcher = {
+    dispatchTest: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -38,6 +43,10 @@ describe('WebhooksController', () => {
           provide: WebhookDeliveryService,
           useValue: mockDeliveryService,
         },
+        {
+          provide: TestWebhookDispatcher,
+          useValue: mockTestDispatcher,
+        },
       ],
     }).compile();
 
@@ -46,6 +55,7 @@ describe('WebhooksController', () => {
     deliveryService = module.get<WebhookDeliveryService>(
       WebhookDeliveryService,
     );
+    testDispatcher = module.get<TestWebhookDispatcher>(TestWebhookDispatcher);
   });
 
   afterEach(() => {
@@ -152,12 +162,16 @@ describe('WebhooksController', () => {
       };
 
       mockWebhooksService.findOne.mockResolvedValue(webhook);
-      mockDeliveryService.triggerEvent.mockResolvedValue(undefined);
+      mockTestDispatcher.dispatchTest.mockResolvedValue(undefined);
 
       const result = await controller.testWebhook('webhook-123', testDto);
 
       expect(mockWebhooksService.findOne).toHaveBeenCalledWith('webhook-123');
-      expect(mockDeliveryService.triggerEvent).toHaveBeenCalled();
+      expect(mockTestDispatcher.dispatchTest).toHaveBeenCalledWith(
+        webhook,
+        testDto.eventType,
+        testDto.payload,
+      );
       expect(result.message).toBe('Test webhook triggered');
     });
   });

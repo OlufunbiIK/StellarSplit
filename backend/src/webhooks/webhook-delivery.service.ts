@@ -65,6 +65,18 @@ export class WebhookDeliveryService {
   }
 
   /**
+   * Trigger delivery to a single specific webhook
+   */
+  async triggerSingleWebhook(
+    webhook: Webhook,
+    eventType: WebhookEventType,
+    payload: Record<string, any>,
+  ): Promise<void> {
+    this.logger.log(`Triggering isolated ${eventType} event for webhook ${webhook.id}`);
+    await this.queueDelivery(webhook, eventType, payload);
+  }
+
+  /**
    * Queue a webhook delivery job
    */
   private async queueDelivery(

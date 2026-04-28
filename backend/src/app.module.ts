@@ -27,7 +27,7 @@ import { MentionsModule } from "./mentions/mentions.module";
 import { ActivitiesModule } from "./modules/activities/activities.module";
 import { ArchivingModule } from "./modules/archiving/archiving.module";
 import { CurrencyModule } from "./modules/currency/currency.module";
-import { HealthModule } from "./modules/health/health.module";
+import { HealthModule } from "./modules/health/health.module"; // canonical backend health module
 import { ItemsModule } from "./modules/items/items.module";
 import { SchedulerModule } from "./modules/scheduler/scheduler.module";
 import { SplitsModule } from "./modules/splits/splits.module";

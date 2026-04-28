@@ -117,6 +117,43 @@ describe('WebhookDeliveryService', () => {
     });
   });
 
+  describe('triggerSingleWebhook', () => {
+    it('should queue delivery for a single webhook without querying database', async () => {
+      const webhook: any = {
+        id: 'webhook-single',
+        userId: 'user-1',
+        url: 'https://example.com/test',
+        events: [WebhookEventType.SPLIT_CREATED],
+        secret: 'test-secret',
+        isActive: true,
+      };
+
+      mockDeliveryRepository.create.mockReturnValue({
+        id: 'delivery-test',
+        webhookId: 'webhook-single',
+        eventType: WebhookEventType.SPLIT_CREATED,
+        payload: { test: 'payload' },
+        status: DeliveryStatus.PENDING,
+      });
+      mockDeliveryRepository.save.mockResolvedValue({
+        id: 'delivery-test',
+      });
+      mockQueue.add.mockResolvedValue({});
+
+      await service.triggerSingleWebhook(
+        webhook,
+        WebhookEventType.SPLIT_CREATED,
+        { test: 'payload' },
+      );
+
+      expect(mockWebhookRepository.createQueryBuilder).not.toHaveBeenCalled();
+      expect(mockDeliveryRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        webhookId: 'webhook-single',
+      }));
+      expect(mockQueue.add).toHaveBeenCalled();
+    });
+  });
+
   describe('getDeliveryLogs', () => {
     it('should return delivery logs for a webhook', async () => {
       const deliveries = [

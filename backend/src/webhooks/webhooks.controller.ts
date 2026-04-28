@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { WebhooksService } from './webhooks.service';
 import { WebhookDeliveryService } from './webhook-delivery.service';
+import { TestWebhookDispatcher } from './test-webhook-dispatcher';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
 import { TestWebhookDto } from './dto/test-webhook.dto';
@@ -32,6 +33,7 @@ export class WebhooksController {
   constructor(
     private readonly webhooksService: WebhooksService,
     private readonly deliveryService: WebhookDeliveryService,
+    private readonly testDispatcher: TestWebhookDispatcher,
   ) {}
 
   @Post()
@@ -117,17 +119,17 @@ export class WebhooksController {
   ) {
     const webhook = await this.webhooksService.findOne(id);
 
-    // Use the delivery service to trigger a test event
+    // Use the direct dispatcher to send only to this webhook
     const payload = testDto.payload || {
       test: true,
       message: 'This is a test webhook',
       timestamp: new Date().toISOString(),
     };
 
-    await this.deliveryService.triggerEvent(
+    await this.testDispatcher.dispatchTest(
+      webhook,
       testDto.eventType,
       payload,
-      webhook.userId,
     );
 
     return {
