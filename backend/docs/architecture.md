@@ -5,6 +5,7 @@
 StellarSplit is a mobile-friendly crypto bill-splitting application powered by the Stellar network.
 
 It allows users to:
+
 - Scan receipts
 - Automatically split bills
 - Create participant balances
@@ -19,7 +20,7 @@ This document explains how all major components fit together so new contributors
 
                         ┌─────────────────────┐
                         │     Frontend        │
-                        │   (Next.js App)     │
+                        │  (React + Vite)     │
                         └──────────┬──────────┘
                                    │ HTTPS / WebSocket
                                    ▼
@@ -41,14 +42,14 @@ This document explains how all major components fit together so new contributors
         │  └──────────────┘         └──────────────────┘  │
         └──────────────────────────────────────────────────┘
 
-
 ---
 
 # 2. Core Components
 
-## Frontend (Next.js)
+## Frontend (React + Vite)
 
 Responsibilities:
+
 - Receipt upload
 - Split configuration UI
 - Wallet connection
@@ -57,16 +58,19 @@ Responsibilities:
 - User dashboard
 
 Mobile-first design using:
-- Next.js App Router
+
+- React 18+
+- TypeScript
+- Vite (build tool)
 - TailwindCSS
-- ShadCN UI
-- Stellar Wallet Kit
+- React Router
 
 ---
 
 ## Backend (NestJS)
 
 Responsibilities:
+
 - Authentication (JWT)
 - Receipt processing
 - Split logic
@@ -83,6 +87,7 @@ Backend is stateless and horizontally scalable.
 ## Database (PostgreSQL)
 
 Stores:
+
 - Users
 - Receipts
 - Splits
@@ -97,6 +102,7 @@ JSONB fields are used for parsed receipt storage.
 ## Redis
 
 Used for:
+
 - Rate limiting
 - WebSocket pub/sub
 - Temporary payment state
@@ -107,6 +113,7 @@ Used for:
 ## Stellar Network
 
 Used for:
+
 - Native XLM payments
 - USDC payments
 - Memo tagging
@@ -117,11 +124,13 @@ Used for:
 ## Soroban Smart Contract (Optional Escrow Layer)
 
 Used when:
+
 - A split requires escrow-based trust
 - Payment is locked until all participants fund
 - Funds must be distributed automatically
 
 The contract:
+
 - Accepts deposits
 - Tracks participant balances
 - Releases funds when conditions are met
@@ -131,65 +140,104 @@ The contract:
 
 # 3. Folder Structure
 
-## Frontend Structure
-
-apps/frontend/
+## Project Structure
 
 ```
-src/
- ├── app/                  # Next.js routes
- ├── components/           # UI components
- ├── features/
+StellarSplit/
+├── frontend/              # React + Vite frontend
+│   ├── src/
+│   │   ├── components/    # UI components
+│   │   ├── features/     # Feature-based modules
+│   │   ├── hooks/        # Custom React hooks
+│   │   ├── lib/          # Utilities
+│   │   └── App.tsx       # Root component
+│   ├── vite.config.ts    # Vite configuration
+│   └── package.json
+└── backend/              # NestJS backend
+    ├── src/
+    │   ├── analytics/    # Analytics module
+    │   ├── auth/         # Authentication module
+    │   ├── batch/        # Background jobs (Bull)
+    │   ├── common/       # Shared utilities
+    │   ├── config/       # Configuration
+    │   ├── database/     # Database configuration
+    │   ├── email/        # Email service
+    │   ├── entities/     # Database entities
+    │   ├── modules/      # Core modules (splits, items, etc.)
+    │   ├── ocr/          # OCR receipt processing
+    │   ├── payments/     # Stellar payments
+    │   ├── receipts/     # Receipt management
+    │   ├── realtime-analytics/ # Real-time analytics
+    │   ├── webhooks/     # Webhook handling
+    │   ├── app.module.ts # Root module
+    │   └── main.ts       # Application entry point
+    ├── package.json
+    └── tsconfig.json
+```
+
+---
+
+## Frontend Structure
+
+```
+frontend/src/
+ ├── components/           # Reusable UI components
+ ├── features/            # Feature-based modules
  │    ├── auth/
  │    ├── receipts/
  │    ├── splits/
  │    ├── payments/
- ├── lib/
+ ├── hooks/               # Custom React hooks
+ ├── lib/                 # Utilities and SDK wrappers
  │    ├── api-client.ts
  │    ├── wallet.ts
- │    ├── stellar.ts
- ├── hooks/
- ├── store/
- └── types/
+ │    └── stellar.ts
+ ├── types/               # TypeScript definitions
+ └── App.tsx              # Root component
 ```
 
 Explanation:
 
 - `features/` = domain-based structure
 - `lib/` = utilities and SDK wrappers
-- `store/` = global state (Zustand or Redux)
 - `types/` = shared TypeScript definitions
+- `hooks/` = custom React hooks for state/logic
 
 ---
 
 ## Backend Structure
 
-apps/api/
-
 ```
-src/
- ├── auth/
- ├── users/
- ├── receipts/
- ├── splits/
- ├── payments/
- ├── stellar/
- ├── soroban/
- ├── common/
+backend/src/
+ ├── analytics/           # Analytics module
+ ├── auth/                # Authentication module
+ ├── batch/               # Background jobs (Bull)
+ ├── common/              # Shared infrastructure
  │    ├── guards/
  │    ├── interceptors/
- │    ├── filters/
- ├── config/
- ├── app.module.ts
- └── main.ts
+ │    └── filters/
+ ├── config/              # Configuration
+ ├── database/            # Database configuration
+ ├── entities/            # Database entities
+ ├── modules/             # Core modules
+ │    ├── splits/
+ │    ├── items/
+ │    └── participants/
+ ├── ocr/                 # OCR processing
+ ├── payments/            # Stellar payments
+ ├── receipts/            # Receipt management
+ ├── stellar/             # Stellar integration
+ ├── webhooks/            # Webhook handling
+ ├── app.module.ts        # Root module
+ └── main.ts              # Application entry point
 ```
 
 Explanation:
 
-- Each domain is modular
+- Each domain is modular with its own controller, service, DTOs
 - `stellar/` handles Horizon interaction
-- `soroban/` handles smart contract invocation
 - `common/` contains shared infrastructure
+- `modules/` contains core business logic modules
 
 ---
 
@@ -257,6 +305,7 @@ When escrow is enabled:
 6. Backend records completion
 
 Contract stores:
+
 - Split ID
 - Participants
 - Deposit status
@@ -266,48 +315,62 @@ Contract stores:
 
 # 7. Key Technologies & Why
 
-Next.js
-- Fast UI rendering
-- Great DX
-- Edge deployment support
+React + Vite
+
+- Fast development with hot module replacement
+- Modern build tooling
+- Great developer experience
+- Optimized production builds
 
 NestJS
+
 - Modular architecture
-- Strong typing
+- Strong typing with TypeScript
 - Enterprise scalability
+- Dependency injection
 
 PostgreSQL
+
 - Reliable relational integrity
 - JSONB for receipt storage
+- ACID compliance
 
 Redis
+
 - High-performance caching
 - Real-time events
+- Pub/Sub for WebSockets
 
 Stellar
+
 - Low fees
 - Fast settlement (~5 seconds)
 - Native asset support
 
 Soroban
+
 - Smart contract escrow logic
 - Trust-minimized settlement
 - On-chain enforcement
 
 Docker
+
 - Environment consistency
+- Easy deployment
 
 ---
 
 # 8. Security Model
 
-- JWT authentication
+- JWT authentication with refresh tokens
 - Role-based guards
-- Input validation
+- Input validation with class-validator
 - Rate limiting
 - Idempotent payment handling
 - Horizon verification before marking success
 - Contract state verification
+- CORS configuration
+- Helmet for security headers
 
 ---
 
@@ -326,10 +389,10 @@ Memo
 Optional text field attached to Stellar transactions.
 
 Horizon
-Stellar’s REST API server for interacting with the network.
+Stellar's REST API server for interacting with the network.
 
 Soroban
-Stellar’s smart contract platform.
+Stellar's smart contract platform.
 
 Settlement
 Final on-chain confirmation of payment.
@@ -338,7 +401,7 @@ XDR
 Encoded Stellar transaction format.
 
 Trustline
-A user’s approval to hold a specific asset (e.g., USDC).
+A user's approval to hold a specific asset (e.g., USDC).
 
 ---
 
@@ -347,8 +410,10 @@ A user’s approval to hold a specific asset (e.g., USDC).
 - Stateless backend
 - Horizontal scaling
 - Redis caching
-- Background job workers
+- Background job workers (Bull)
 - Event-driven payment confirmations
+- Database connection pooling
+- CDN for static assets
 
 ---
 
@@ -356,12 +421,13 @@ A user’s approval to hold a specific asset (e.g., USDC).
 
 StellarSplit combines:
 
-- Modern web architecture
-- Modular backend design
-- Fast blockchain settlement
-- Optional smart contract escrow
+- Modern web architecture (React + Vite)
+- Modular backend design (NestJS)
+- Fast blockchain settlement (Stellar)
+- Optional smart contract escrow (Soroban)
 
 This architecture ensures:
+
 - Scalability
 - Security
 - Transparency
