@@ -6,12 +6,14 @@ import { WebhookDeliveryService } from './webhook-delivery.service';
 import { Webhook } from './webhook.entity';
 import { WebhookDelivery, DeliveryStatus } from './webhook-delivery.entity';
 import { WebhookEventType } from './webhook.entity';
+import { WebhookRateLimitStore } from './webhook-rate-limit.store';
 
 describe('WebhookDeliveryService', () => {
   let service: WebhookDeliveryService;
   let webhookRepository: Repository<Webhook>;
   let deliveryRepository: Repository<WebhookDelivery>;
   let webhookQueue: any;
+  let rateLimitStore: any;
 
   const mockWebhookRepository = {
     createQueryBuilder: jest.fn(),
@@ -27,6 +29,10 @@ describe('WebhookDeliveryService', () => {
 
   const mockQueue = {
     add: jest.fn(),
+  };
+
+  const mockRateLimitStore = {
+    checkRateLimit: jest.fn().mockResolvedValue(true),
   };
 
   beforeEach(async () => {
@@ -45,6 +51,10 @@ describe('WebhookDeliveryService', () => {
           provide: getQueueToken('webhook_queue'),
           useValue: mockQueue,
         },
+        {
+          provide: WebhookRateLimitStore,
+          useValue: mockRateLimitStore,
+        },
       ],
     }).compile();
 
@@ -56,6 +66,7 @@ describe('WebhookDeliveryService', () => {
       getRepositoryToken(WebhookDelivery),
     );
     webhookQueue = module.get(getQueueToken('webhook_queue'));
+    rateLimitStore = module.get(WebhookRateLimitStore);
   });
 
   afterEach(() => {
