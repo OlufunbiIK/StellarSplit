@@ -2,7 +2,13 @@
 import fs from 'fs';
 import path from 'path';
 
-const LOG_PATH = path.join(__dirname, 'audit.log');
+const REPORTS_DIR = path.join(__dirname, '..', '..', 'reports');
+const LOG_PATH = path.join(REPORTS_DIR, 'audit.log');
+
+// Ensure reports directory exists
+if (!fs.existsSync(REPORTS_DIR)) {
+  fs.mkdirSync(REPORTS_DIR, { recursive: true });
+}
 
 export function appendEvent(event: object) {
   const line = JSON.stringify({ ...event, timestamp: Date.now() }) + '\n';

@@ -22,3 +22,8 @@ Comprehensive audit trail for compliance, logging all actions, enforcing data re
 - `report.ts` (scheduled report generation)
 - `retention.ts` (data retention policies)
 - `audit.test.ts` (tests)
+
+## Generated Artifacts
+Runtime artifacts are written to `backend/reports/`:
+- `audit.log` - Append-only event log
+- `audit-report.json` - Generated compliance report

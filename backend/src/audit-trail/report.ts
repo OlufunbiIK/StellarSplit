@@ -3,7 +3,13 @@ import { readEvents } from './eventStore';
 import fs from 'fs';
 import path from 'path';
 
-const REPORT_PATH = path.join(__dirname, 'audit-report.json');
+const REPORTS_DIR = path.join(__dirname, '..', '..', 'reports');
+const REPORT_PATH = path.join(REPORTS_DIR, 'audit-report.json');
+
+// Ensure reports directory exists
+if (!fs.existsSync(REPORTS_DIR)) {
+  fs.mkdirSync(REPORTS_DIR, { recursive: true });
+}
 
 export function generateReport() {
   const events = readEvents();
