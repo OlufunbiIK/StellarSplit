@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { ROUTES } from "../constants/routes";
+import { getNavigationRoutes } from "../routes/routeCatalog";
 import { LanguageSelector } from "./LanguageSelector";
 
 interface SidebarProps {
@@ -148,10 +148,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             Navigation
           </span>
 
-          {ROUTES.map((route) => (
+          {getNavigationRoutes().map((route) => (
             <NavLink
-              key={route.label}
-              to={route.to}
+              key={route.id}
+              to={route.path}
               onClick={onClose}
               style={({ isActive }) => ({
                 display: "flex",
