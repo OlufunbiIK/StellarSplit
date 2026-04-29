@@ -73,3 +73,12 @@ contracts/**/test_snapshots/
 contracts/.contract-id-*
 Cargo.lock
 build_errors*.txt
+
+# ========================
+# Backend runtime artifacts
+# ========================
+backend/reports/*
+!backend/reports/.gitkeep
+backend/src/audit-trail/audit.log
+backend/src/audit-trail/audit-report.json
+backend/src/coverage/
